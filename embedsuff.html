@@ -1,0 +1,128 @@
+<!DOCTYPE html><html><head>
+  <meta charset="utf-8">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,Arial}
+    .wrap{display:flex;flex-direction:column;height:100%}
+    .controls{padding:10px 12px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #ddd}
+    .controls label{font-size:14px}
+    .controls .group{display:flex;align-items:center;gap:8px}
+    .controls input[type=range]{width:220px}
+    #plot{flex:1 1 auto;width:100%}
+  </style>
+</head><body>
+<div class="wrap">
+  <div class="controls">
+    <div class="group">
+      <label for="aRange">Adjacent (a):</label>
+      <input id="aRange" type="range" min="1" max="15" step="0.1" value="4">
+      <input id="aNum" type="number" min="1" max="15" step="0.1" value="4">
+    </div>
+    <div class="group">
+      <label for="oRange">Opposite (o):</label>
+      <input id="oRange" type="range" min="1" max="15" step="0.1" value="3">
+      <input id="oNum" type="number" min="1" max="15" step="0.1" value="3">
+    </div>
+    <div class="group" id="readout" style="margin-left:auto;font-size:14px;"></div>
+  </div>
+  <div id="plot"></div>
+</div>
+
+<script>
+  const els = {
+    aRange: document.getElementById("aRange"),
+    aNum:   document.getElementById("aNum"),
+    oRange: document.getElementById("oRange"),
+    oNum:   document.getElementById("oNum"),
+    readout:document.getElementById("readout")
+  };
+
+  function arcTrace(cx, cy, r, start, end){
+    const n = 40, xs = [], ys = [];
+    for(let i=0;i<=n;i++){
+      const t = start + (end - start)*i/n;
+      xs.push(cx + r*Math.cos(t));
+      ys.push(cy + r*Math.sin(t));
+    }
+    return { x: xs, y: ys, mode: "lines", line: { width: 2, dash: "dot" }, hoverinfo: "skip", showlegend: false };
+  }
+
+  function updatePlot(a, o){
+    a = Math.max(1, +a); o = Math.max(1, +o);
+    const h = Math.hypot(a, o);
+    const theta = Math.atan2(o, a);              // in radians
+    const alphaDeg = (theta * 180 / Math.PI);    // angle at (a,0)
+    const betaDeg  = (90 - alphaDeg);            // angle at (0,o)
+
+    // Triangle sides
+    const triTraces = [
+      { x:[0, a], y:[0, 0], mode:"lines+markers", name:`Adjacent (a = ${a.toFixed(2)})`, line:{width:3}, marker:{size:6} },
+      { x:[0, 0], y:[0, o], mode:"lines+markers", name:`Opposite (o = ${o.toFixed(2)})`, line:{width:3}, marker:{size:6} },
+      { x:[a, 0], y:[0, o], mode:"lines+markers", name:`Hypotenuse (h = ${h.toFixed(2)})`, line:{width:3}, marker:{size:6} }
+    ];
+
+    // Angle arcs (α at (a,0), β at (0,o))
+    const rA = 0.22 * Math.min(a, o);
+    const rB = 0.22 * Math.min(a, o);
+    const alphaArc = arcTrace(a, 0, rA, Math.PI - theta, Math.PI);
+    const betaArc  = arcTrace(0, o, rB, -Math.PI/2, -theta);
+
+    // Annotations
+    const alphaMid = Math.PI - theta/2;
+    const betaMid  = -(Math.PI/4 + theta/2);
+    const alphaPos = { x: a + rA*Math.cos(alphaMid), y: 0 + rA*Math.sin(alphaMid) };
+    const betaPos  = { x: 0 + rB*Math.cos(betaMid),  y: o + rB*Math.sin(betaMid)  };
+
+    const padX = Math.max(1, a * 0.25), padY = Math.max(1, o * 0.35);
+
+    const layout = {
+      title: "Right Triangle with Interactive Sides and Angle Labels",
+      xaxis: { range: [-padX, a + padX], zeroline:false, title:"x", tick0:0, dtick:1 },
+      yaxis: { range: [-padY, o + padY], zeroline:false, title:"y", tick0:0, dtick:1, scaleanchor:"x", scaleratio:1 },
+      showlegend: true,
+      margin: { l: 55, r: 15, t: 50, b: 45 },
+      shapes: [
+        // Right-angle marker at origin
+        { type: "rect",
+          x0: 0, y0: 0, x1: Math.min(a,o)*0.15, y1: Math.min(a,o)*0.15,
+          line: { width: 1 }, fillcolor: "rgba(0,0,0,0.06)"
+        }
+      ],
+      annotations: [
+        // side labels for extra clarity
+        { x: a/2, y: -0.10*o, text: `Adjacent (a)`, showarrow:false },
+        { x: -0.10*a, y: o/2, text: `Opposite (o)`, showarrow:false, textangle:-90 },
+        { x: a*0.55, y: o*0.55, text: `Hypotenuse (h)`, showarrow:false },
+        // angle labels
+        { x: alphaPos.x, y: alphaPos.y, text: `α = ${alphaDeg.toFixed(1)}°`, showarrow:false, font:{size:13, weight:600} },
+        { x: betaPos.x,  y: betaPos.y,  text: `β = ${betaDeg.toFixed(1)}°`,  showarrow:false, font:{size:13, weight:600} }
+      ]
+    };
+
+    Plotly.newPlot("plot", [...triTraces, alphaArc, betaArc], layout, {responsive:true, displayModeBar:false});
+
+    // Text readout (SOH-CAH-TOA)
+    els.readout.textContent =
+      `θ at (a,0): α = ${alphaDeg.toFixed(1)}°, β at (0,o): ${betaDeg.toFixed(1)}°  |  ` +
+      `SOH: sin α = o/h = ${(o/h).toFixed(3)}  ·  CAH: cos α = a/h = ${(a/h).toFixed(3)}  ·  TOA: tan α = o/a = ${(o/a).toFixed(3)}`;
+  }
+
+  function syncAndUpdate(from){
+    if(from === "aRange" || from === "aNum"){
+      els.aNum.value = els.aRange.value = Math.max(1, +els[from].value);
+    }
+    if(from === "oRange" || from === "oNum"){
+      els.oNum.value = els.oRange.value = Math.max(1, +els[from].value);
+    }
+    updatePlot(+els.aRange.value, +els.oRange.value);
+  }
+
+  ["aRange","aNum","oRange","oNum"].forEach(id=>{
+    els[id].addEventListener("input", ()=>syncAndUpdate(id));
+    els[id].addEventListener("change", ()=>syncAndUpdate(id));
+  });
+
+  // initial render
+  updatePlot(+els.aRange.value, +els.oRange.value);
+</script>
+</body></html>
