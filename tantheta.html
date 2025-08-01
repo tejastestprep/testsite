@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Right Triangle (tan θ = 0.75)</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+  <div id="triangle" style="width: 600px; height: 600px;"></div>
+
+  <script>
+    /* ---- vertices ----
+       O (0,0)  – angle θ is here
+       A (4,0)  – adjacent end
+       B (4,3)  – opposite end
+       OB is the hypotenuse (length 5)
+    */
+    const O = {x:0, y:0};
+    const A = {x:4, y:0};
+    const B = {x:4, y:3};
+    const hyp = {x:[O.x, B.x], y:[O.y, B.y]};
+    const adj = {x:[O.x, A.x], y:[O.y, A.y]};
+    const opp = {x:[A.x, B.x], y:[A.y, B.y]};
+
+    // main triangle lines
+    const triangleTraces = [
+      {x: hyp.x, y: hyp.y, mode:'lines', name:'hypotenuse', line:{width:3}},
+      {x: adj.x, y: adj.y, mode:'lines', name:'adjacent (4)', line:{width:3}},
+      {x: opp.x, y: opp.y, mode:'lines', name:'opposite (3)', line:{width:3}}
+    ];
+
+    // angle arc (drawn with an SVG path shape)
+    const r   = 0.7;                 // arc radius
+    const ang = Math.atan2(3,4);     // θ in radians
+    const arcPath =
+      `M ${r},0 A ${r},${r} 0 0,1 ${r*Math.cos(ang)},${r*Math.sin(ang)}`;
+
+    // layout with annotations & shape
+    const layout = {
+      title:'Right triangle with tan θ = 3 / 4',
+      showlegend:false,
+      xaxis:{range:[-0.5, 4.5], zeroline:false, showgrid:false, scaleanchor:'y', visible:false},
+      yaxis:{range:[-0.5, 3.5], zeroline:false, showgrid:false, visible:false},
+      shapes:[
+        {type:'path', path:arcPath, xref:'x', yref:'y',
+         line:{width:2}, fillcolor:'rgba(0,0,0,0)'}
+      ],
+      annotations:[
+        {x:2, y:1.5, text:'hypotenuse 5', showarrow:false},
+        {x:2, y:-0.25, text:'adjacent&nbsp;4', showarrow:false},
+        {x:4.25, y:1.5, text:'opposite&nbsp;3', showarrow:false},
+        {x:0.8, y:0.3, text:'θ ≈ 36.9°', showarrow:false}
+      ],
+      margin:{l:20,r:20,b:20,t:40}
+    };
+
+    Plotly.newPlot('triangle', triangleTraces, layout, {responsive:true});
+  </script>
+</body>
+</html>
